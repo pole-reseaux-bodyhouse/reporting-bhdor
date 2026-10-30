@@ -24,7 +24,7 @@ body { padding: clamp(10px, 2.5vw, 32px); }
 </script>
 <script>
 window.dash = (() => {
-  const SOURCES = { pages_jour: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQCArQtKbnaD95xMMYZsPGoQ8YyApz7Dv_6fCgKpit54QPk39NQ_smrvVyI0XlcJ0X3AhsQzOM9_h1s/pub?gid=1377302618&single=true&output=csv', publications: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQlOvxNkGaJX6eoKwliu13qTxZgXsBa1K3sgOZe_ljcW-XL1QBrefsVMcKpJsg0XcRO3WD91VwX-hsK/pub?gid=1300857915&single=true&output=csv' };
+  const SOURCES = { pages_jour: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQCArQtKbnaD95xMMYZsPGoQ8YyApz7Dv_6fCgKpit54QPk39NQ_smrvVyI0XlcJ0X3AhsQzOM9_h1s/pub?gid=1377302618&single=true&output=csv', publications: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQlOvxNkGaJX6eoKwliu13qTxZgXsBa1K3sgOZe_ljcW-XL1QBrefsVMcKpJsg0XcRO3WD91VwX-hsK/pub?gid=1300857915&single=true&output=csv', stories: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQlOvxNkGaJX6eoKwliu13qTxZgXsBa1K3sgOZe_ljcW-XL1QBrefsVMcKpJsg0XcRO3WD91VwX-hsK/pub?gid=1977239303&single=true&output=csv' };
   const loaders = {}, calcs = [], subs = [], state = {};
   const DEFAUTS = { page: 'Toutes les pages', periode: 'auto' };
   let params = { ...DEFAUTS };
@@ -93,6 +93,10 @@ window.dash = (() => {
 .bh-zoom-titre { font-family: var(--bh-titre); font-size: 26px; color: var(--bh-bordeaux); text-transform: uppercase; margin: 6px 0 0; }
 .bh-zoom-titre small { font-family: var(--bh-corps); font-size: 13px; color: var(--bh-gris); text-transform: none; margin-left: 8px; font-weight: 400; }
 .bh-table td.pos { color: var(--bh-hausse); font-weight: 500; } .bh-table td.neg { color: var(--bh-baisse); font-weight: 500; }
+.bh-mini { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: 14px; margin-bottom: 14px; }
+.bh-mini > div { background: #fff; border: 1px solid var(--bh-bord); border-radius: 10px; padding: 14px 16px; }
+.bh-mini .l { font-size: 12.5px; color: #444; }
+.bh-mini .v { font-size: 26px; font-variant-numeric: tabular-nums; line-height: 1.25; }
 .bh-pages tfoot td { font-weight: 700; background: var(--bh-rose-clair); border-top: 2px solid var(--bh-bordeaux); }
 .bh-tag-old { display: none; align-items: center; gap: 6px; font-family: var(--bh-titre); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--bh-bordeaux); border: 2px solid var(--bh-bordeaux); border-radius: 10px; padding: 5px 10px 3px; margin-bottom: 10px; }
 .bh h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1; }
@@ -273,6 +277,31 @@ window.dash = (() => {
     <p class="bh-note">Les 5 publications les plus vues sur la période, tous formats confondus. Le sujet ouvre la publication.</p>
   </section>
 
+  <section class="bh-section" id="stories">
+    <h2>Stories</h2>
+    <div class="bh-mini">
+      <div><div class="l">Stories publiées</div><div class="v bh-st-nb">—</div></div>
+      <div><div class="l">Vues des stories</div><div class="v bh-st-vues">—</div></div>
+      <div><div class="l">Vues moyennes par story</div><div class="v bh-st-moy">—</div></div>
+      <div><div class="l">Interactions</div><div class="v bh-st-int">—</div></div>
+    </div>
+    <div class="bh-boite bh-defile">
+      <table class="bh-table bh-stories">
+        <thead><tr>
+          <th class="l">Date</th>
+          <th class="l bh-cache-sm">Page</th>
+          <th class="l">Type</th>
+          <th>Vues</th>
+          <th class="bh-cache-sm">Comptes touchés</th>
+          <th>Interactions</th>
+          <th class="bh-cache-sm">Réponses</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="bh-note">Les stories Facebook de la période, des plus vues aux moins vues. Interactions : réactions, réponses, partages et clics sur la story. Meta ne remonte que les stories encore en ligne ou gardées dans l'archive des stories de la page.</p>
+  </section>
+
   <section class="bh-section" id="jours">
     <h2>Quel jour publier</h2>
     <div class="bh-boite">
@@ -350,6 +379,32 @@ dash.loader('publications', {
     if (cell !== '' || row.length) { row.push(cell); lines.push(row); }
     const columns = lines.shift() || [];
     const texte = ['ID', 'Mois', 'Compte', 'Date', 'Type', 'Sujet', 'Lien', 'Mis à jour', 'Local (oui/non)', 'Contenu', 'Taux engagement'];
+    const iso = (d) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d); return m ? m[3] + '-' + m[2] + '-' + m[1] : d; };
+    const num = (v) => { const s = String(v).replace(/[\s  ]/g, '').replace(',', '.'); return s === '' ? null : Number(s); };
+    const rows = lines.filter((l) => l.some((v) => v !== '')).map((l) => Object.fromEntries(columns.map((h, i) => [h, h === 'Date' ? iso(l[i] ?? '') : texte.includes(h) ? (l[i] ?? '') : num(l[i] ?? '')])));
+    return { columns, rows };
+  },
+});
+
+dash.loader('stories', {
+  description: 'Le Google Sheet exporté en CSV (base64) remis en lignes, chiffres en nombres et dates au format AAAA-MM-JJ.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Réponse de Google Drive sans contenu');
+    const bin = atob(a.content);
+    const text = new TextDecoder('utf-8').decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))).replace(/^﻿/, '');
+    const lines = []; let row = [], cell = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { row.push(cell); cell = ''; }
+      else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); lines.push(row); row = []; cell = ''; }
+      else cell += c;
+    }
+    if (cell !== '' || row.length) { row.push(cell); lines.push(row); }
+    const columns = lines.shift() || [];
+    const texte = ['ID', 'Mois', 'Compte', 'Date', 'Type', 'Sujet', 'Lien', 'Mis à jour', 'Local (oui/non)', 'Contenu', 'Taux engagement', 'Heure'];
     const iso = (d) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d); return m ? m[3] + '-' + m[2] + '-' + m[1] : d; };
     const num = (v) => { const s = String(v).replace(/[\s  ]/g, '').replace(',', '.'); return s === '' ? null : Number(s); };
     const rows = lines.filter((l) => l.some((v) => v !== '')).map((l) => Object.fromEntries(columns.map((h, i) => [h, h === 'Date' ? iso(l[i] ?? '') : texte.includes(h) ? (l[i] ?? '') : num(l[i] ?? '')])));
@@ -761,6 +816,37 @@ dash.calc('posts', {
         return tr;
       }));
       if (!rows.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 8; td.className = 'l'; td.style.color = '#6B6B6B'; td.textContent = 'Aucune publication sur la période.'; tr.appendChild(td); tbt.appendChild(tr); }
+    }
+
+    // Stories
+    const st = dash.data('stories');
+    const tbs = root.querySelector('.bh-stories tbody');
+    if (st.status === 'ok' && P) {
+      const rows = st.data.filter((r) => r.Date >= P.debut && r.Date <= P.fin && (page === TOUTES || r.Compte === page))
+        .sort((a, b) => (b.Vues || 0) - (a.Vues || 0));
+      const somme = (k) => rows.reduce((t, r) => t + (r[k] || 0), 0);
+      root.querySelector('.bh-st-nb').textContent = nf.format(rows.length);
+      root.querySelector('.bh-st-vues').textContent = nf.format(somme('Vues'));
+      root.querySelector('.bh-st-moy').textContent = rows.length ? nf.format(Math.round(somme('Vues') / rows.length)) : '—';
+      root.querySelector('.bh-st-int').textContent = nf.format(somme('Interactions'));
+      tbs.replaceChildren(...rows.slice(0, 100).map((r) => {
+        const tr = document.createElement('tr');
+        const td = (t, c) => { const e = document.createElement('td'); if (c) e.className = c; if (t instanceof Node) e.appendChild(t); else e.textContent = t; tr.appendChild(e); };
+        let d = dateLongue(r.Date) + (r.Heure ? ' · ' + r.Heure : '');
+        if (/^https:\/\/(www\.)?facebook\.com\//.test(r.Lien)) { const a = document.createElement('a'); a.href = r.Lien; a.target = '_blank'; a.rel = 'noopener'; a.textContent = d; d = a; }
+        td(d, 'l');
+        td(court(r.Compte), 'l bh-cache-sm');
+        td(r.Type, 'l');
+        td(nf.format(r.Vues || 0));
+        td(nf.format(r['Comptes touchés'] || 0), 'bh-cache-sm');
+        td(nf.format(r.Interactions || 0));
+        td(nf.format(r['Réponses'] || 0), 'bh-cache-sm');
+        return tr;
+      }));
+      if (!rows.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 7; td.className = 'l'; td.style.color = '#6B6B6B'; td.textContent = 'Aucune story sur la période.'; tr.appendChild(td); tbs.appendChild(tr); }
+    } else if (st.status === 'error') {
+      tbs.replaceChildren();
+      const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 7; td.className = 'l'; td.style.color = '#6B6B6B'; td.textContent = 'Les stories n\'ont pas pu être chargées.'; tr.appendChild(td); tbs.appendChild(tr);
     }
 
     // Évolution mensuelle
